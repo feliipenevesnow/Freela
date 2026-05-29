@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeadGen Pro | Prospecção Automática</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            400: '#9f7aea',
+                            500: '#805ad5',
+                            600: '#6b46c1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow { box-shadow: 0 0 20px rgba(128, 90, 213, 0.4); }
+        .glow-red { box-shadow: 0 0 20px rgba(220, 38, 38, 0.4); }
+        
+        /* Ocultar barra de rolagem mas permitir scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden" x-data="leadApp()">
+    
+    <!-- Terminal Modal -->
+    <div x-show="showProgressModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" style="display: none;" x-transition>
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[80vh]">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                <div>
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-500 animate-spin" x-show="isScraping" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span x-text="isScraping ? 'Varredura Profunda em Andamento' : 'Varredura Concluída'"></span>
+                    </h3>
+                    <p class="text-sm text-brand-400 font-medium mt-1" x-text="progressState.title"></p>
+                </div>
+                <button @click="closeModal()" :disabled="isScraping" class="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="px-6 py-4 bg-gray-800/30 border-b border-gray-800" x-show="progressState.total > 0">
+                <div class="flex justify-between text-xs font-medium text-gray-400 mb-2">
+                    <span>Progresso de Nichos</span>
+                    <span x-text="`${progressState.current} de ${progressState.total}`"></span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-3">
+                    <div class="bg-brand-500 h-3 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(128,90,213,0.5)]" :style="`width: ${progressState.total > 0 ? (progressState.current / progressState.total) * 100 : 0}%`"></div>
+                </div>
+            </div>
+
+            <!-- Terminal Window -->
+            <div class="flex-1 p-6 bg-[#0a0a0a] text-green-500 font-mono text-sm overflow-y-auto leading-relaxed shadow-inner" id="terminalContainer">
+                <template x-for="log in terminalLogs">
+                    <div class="mb-1.5 opacity-90 hover:opacity-100" :class="log.includes('Erro') || log.includes('❌') ? 'text-red-400' : (log.includes('✅') || log.includes('Salvo') ? 'text-green-300' : 'text-green-500')" x-text="log"></div>
+                </template>
+                <div x-show="isScraping" class="animate-pulse mt-2 text-green-600">_</div>
+            </div>
+            
+            <!-- Footer Actions -->
+            <div class="px-6 py-4 border-t border-gray-800 bg-gray-900/50 flex justify-end">
+                <button @click="closeModal()" :disabled="isScraping" class="px-8 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-brand-500/20">
+                    <span x-text="isScraping ? 'Aguarde o Término...' : 'Fechar Tela Hacker e Ver Leads'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Background Effects -->
+    <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-400 to-blue-400">
+                    LeadGen Pro
+                </h1>
+                <p class="text-gray-400 text-sm mt-1">Motor de Descoberta Automática de Clientes</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
+                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span> Sistema Online
+                </span>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass rounded-xl p-6 transition transform hover:-translate-y-1 duration-300">
+                <div class="text-gray-400 text-sm font-medium mb-2">Total de Leads</div>
+                <div class="text-4xl font-bold text-white" x-text="leads.length">0</div>
+            </div>
+            <div class="glass rounded-xl p-6 transition transform hover:-translate-y-1 duration-300">
+                <div class="text-gray-400 text-sm font-medium mb-2">Sem Website <span class="text-xs text-red-400 ml-1">(ALVO)</span></div>
+                <div class="text-4xl font-bold text-red-400" x-text="leads.filter(l => l.site_status === 'Sem Site').length">0</div>
+            </div>
+            <div class="glass rounded-xl p-6 transition transform hover:-translate-y-1 duration-300">
+                <div class="text-gray-400 text-sm font-medium mb-2">Com Website</div>
+                <div class="text-4xl font-bold text-green-400" x-text="leads.filter(l => l.site_status === 'Com Site').length">0</div>
+            </div>
+            <div class="glass rounded-xl p-6 border-l-4 border-brand-500 transition transform hover:-translate-y-1 duration-300">
+                <div class="text-gray-400 text-sm font-medium mb-2">Contatados</div>
+                <div class="text-4xl font-bold text-brand-400" x-text="leads.filter(l => l.status !== 'Não Contatado').length">0</div>
+            </div>
+        </div>
+
+        <!-- Search Controls -->
+        <div class="glass rounded-2xl p-6 mb-8 relative overflow-hidden">
+            <h2 class="text-lg font-semibold text-white mb-4">1. Defina o Alvo</h2>
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <!-- City Input -->
+                <div class="flex-1 relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        x-model="city" 
+                        placeholder="Nome da sua Cidade (Ex: Presidente Prudente)" 
+                        class="w-full bg-gray-800/50 border border-gray-700 text-white pl-12 pr-4 py-4 rounded-xl outline-none focus:border-brand-500 transition text-lg shadow-inner"
+                    >
+                </div>
+
+                <!-- Auto-Pilot Button -->
+                <button 
+                    @click="startAutoPilot()"
+                    :disabled="isScraping || !city"
+                    class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 px-8 rounded-xl transition duration-300 shadow-lg flex items-center justify-center disabled:opacity-50 glow-red shrink-0"
+                >
+                    <span x-show="!isScraping">🚀 Piloto Automático (Varrer Tudo)</span>
+                    <span x-show="isScraping" class="flex items-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Varrendo a Cidade...
+                    </span>
+                </button>
+            </div>
+
+            <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">2. Ou escolha uma categoria específica</h2>
+            
+            <!-- Category Chips -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <template x-for="cat in categories" :key="cat">
+                    <button 
+                        @click="startSingleCategory(cat)"
+                        :disabled="isScraping || !city"
+                        class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-brand-600 hover:text-white hover:border-brand-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        x-text="cat"
+                    ></button>
+                </template>
+            </div>
+
+            <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">3. Ou digite um nicho livre</h2>
+            <div class="flex gap-4">
+                <input 
+                    type="text" 
+                    x-model="customCategory" 
+                    placeholder="Ex: Farmácia, Marcenaria, Dentista..." 
+                    class="flex-1 bg-gray-800/50 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-brand-500 transition shadow-inner"
+                    @keyup.enter="startSingleCategory(customCategory)"
+                >
+                <button 
+                    @click="startSingleCategory(customCategory)"
+                    :disabled="isScraping || !city || !customCategory"
+                    class="bg-gray-700 hover:bg-brand-600 border border-gray-600 text-white font-medium py-3 px-6 rounded-xl transition disabled:opacity-50"
+                >
+                    Buscar Nicho Personalizado
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <div x-show="message" class="mb-6 p-4 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-center font-medium" x-text="message" x-transition></div>
+
+        <!-- Filters -->
+        <div class="flex space-x-2 mb-6 overflow-x-auto no-scrollbar pb-2">
+            <button @click="filter = 'all'" :class="filter === 'all' ? 'bg-brand-600 text-white' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap">Todos os Leads</button>
+            <button @click="filter = 'alvos'" :class="filter === 'alvos' ? 'bg-red-600/80 text-white border-red-500' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap border border-transparent">Alvos Ideais (Sem Site Funcionando)</button>
+            <button @click="filter = 'Com Site'" :class="filter === 'Com Site' ? 'bg-brand-600 text-white' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap">Com Website</button>
+        </div>
+
+        <!-- Leads Table -->
+        <div class="glass rounded-2xl overflow-hidden shadow-xl border border-white/5">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-800/80 text-gray-400 text-xs uppercase tracking-wider">
+                            <th class="p-5 font-semibold">Empresa</th>
+                            <th class="p-5 font-semibold">Contato</th>
+                            <th class="p-5 font-semibold">Website</th>
+                            <th class="p-5 font-semibold">Status CRM</th>
+                            <th class="p-5 font-semibold text-right">Ação Rápida</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        <template x-for="lead in filteredLeads" :key="lead.id">
+                            <tr class="hover:bg-white/5 transition duration-150 group">
+                                <td class="p-5">
+                                    <div class="flex items-center gap-2">
+                                        <div class="font-semibold text-white text-base group-hover:text-brand-400 transition" x-text="lead.name"></div>
+                                        <span x-show="lead.score >= 80" class="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold whitespace-nowrap" title="Altíssima chance de fechamento">🔥 Quente</span>
+                                        <span x-show="lead.score >= 50 && lead.score < 80" class="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold whitespace-nowrap">⚡ Morno</span>
+                                        <span x-show="lead.score < 50" class="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap">❄️ Frio</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 line-clamp-1" x-text="lead.address"></div>
+                                    <div class="flex items-center gap-2 mt-1.5">
+                                        <span class="text-xs text-yellow-500 font-medium" x-show="lead.rating" x-text="'⭐ ' + lead.rating"></span>
+                                        <span class="text-[10px] bg-gray-800 px-2 py-0.5 rounded text-gray-400" x-text="lead.search_term"></span>
+                                    </div>
+                                </td>
+                                <td class="p-5">
+                                    <div class="text-gray-300 font-medium" x-text="lead.phone || 'Sem telefone'"></div>
+                                </td>
+                                <td class="p-5">
+                                    <span x-show="lead.site_status === 'Sem Site'" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                                        ❌ Sem Site
+                                    </span>
+                                    <span x-show="lead.site_status === 'Site Fora do Ar'" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                        <a :href="lead.website" target="_blank" class="hover:underline flex items-center gap-1">
+                                            ⚠️ Fora do Ar <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        </a>
+                                    </span>
+                                    <span x-show="lead.site_status === 'Apenas Rede Social'" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                        <a :href="lead.website" target="_blank" class="hover:underline flex items-center gap-1">
+                                            📱 Rede Social <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        </a>
+                                    </span>
+                                    <span x-show="lead.site_status === 'Com Site'" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                        <a :href="lead.website" target="_blank" class="hover:underline flex items-center gap-1">
+                                            ✅ Com Site <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        </a>
+                                    </span>
+                                </td>
+                                <td class="p-5">
+                                    <select 
+                                        x-model="lead.status" 
+                                        @change="updateStatus(lead.id, lead.status)"
+                                        class="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full p-2.5 outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="Não Contatado">Não Contatado</option>
+                                        <option value="Mensagem Enviada">Mensagem Enviada</option>
+                                        <option value="Em Negociação">Em Negociação</option>
+                                        <option value="Fechado">Fechado</option>
+                                        <option value="Recusado">Recusado</option>
+                                    </select>
+                                </td>
+                                <td class="p-5 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button 
+                                            @click="extractData(lead)"
+                                            :disabled="extractingId === lead.id"
+                                            class="inline-flex items-center justify-center p-2.5 rounded-xl bg-gray-800 hover:bg-brand-600 border border-gray-700 hover:border-brand-500 text-gray-300 hover:text-white transition disabled:opacity-50"
+                                            title="Coletar Dados Profundos (Fotos, Avaliações, Horários)"
+                                        >
+                                            <svg x-show="extractingId !== lead.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                            <svg x-show="extractingId === lead.id" class="w-5 h-5 animate-spin text-brand-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        </button>
+                                        <button 
+                                            @click="openWhatsApp(lead)"
+                                            :disabled="!lead.phone"
+                                            class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/20"
+                                        >
+                                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                            Abordar
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="filteredLeads.length === 0">
+                            <td colspan="5" class="p-12 text-center">
+                                <div class="text-gray-500 mb-2">
+                                    <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </div>
+                                <p class="text-gray-400 font-medium">Nenhum lead encontrado ainda.</p>
+                                <p class="text-gray-500 text-sm mt-1">Digite sua cidade e clique em um nicho ou no Piloto Automático.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('leadApp', () => ({
+                leads: [],
+                city: 'Presidente Prudente',
+                customCategory: '',
+                isScraping: false,
+                message: '',
+                filter: 'all',
+                
+                showProgressModal: false,
+                terminalLogs: [],
+                progressState: { total: 0, current: 0, title: '' },
+                extractingId: null,
+                
+                categories: [
+                    "Clínica Odontológica", "Oficina Mecânica", "Escritório de Advocacia", "Contabilidade", 
+                    "Pet Shop", "Clínica Veterinária", "Academia de Ginástica", "Imobiliária", 
+                    "Salão de Beleza", "Barbearia", "Pizzaria", "Restaurante", 
+                    "Escritório de Arquitetura", "Escola de Idiomas", "Estúdio de Tatuagem", "Auto Escola",
+                    "Clínica de Estética", "Farmácia de Manipulação", "Loja de Roupas", "Loja de Calçados",
+                    "Construtora", "Centro Automotivo", "Estúdio de Pilates", "Hamburgueria",
+                    "Padaria", "Clínica Médica", "Psicólogo", "Clínica de Fisioterapia",
+                    "Despachante", "Agência de Viagens", "Ótica", "Loja de Móveis",
+                    "Marcenaria", "Material de Construção", "Vidraçaria", "Serralheria",
+                    "Dedetizadora", "Energia Solar", "Segurança Eletrônica", "Estofaria",
+                    "Chaveiro 24h", "Transporte de Cargas", "Floricultura", "Buffet Infantil",
+                    "Espaço para Eventos", "Clínica de Podologia", "Estúdio Fotográfico", "Corretora de Seguros",
+                    "Gráfica Rápida", "Distribuidora de Bebidas"
+                ],
+
+                init() {
+                    this.fetchLeads();
+                    this.fetchStatus();
+                    // Atualização lenta de background
+                    setInterval(async () => {
+                        if (!this.showProgressModal) {
+                            await this.fetchLeads();
+                            await this.fetchStatus();
+                        }
+                    }, 5000);
+                    
+                    // Atualização rápida de terminal quando aberto
+                    setInterval(async () => {
+                        if (this.showProgressModal) {
+                            await this.fetchStatus();
+                            await this.fetchLeads();
+                        }
+                    }, 1000);
+                },
+
+                async fetchStatus() {
+                    try {
+                        const res = await fetch('/api/progress');
+                        const data = await res.json();
+                        
+                        // Se backend diz que não está rodando, mas o botão tava travado, então terminou!
+                        if (!data.is_scraping && this.isScraping) {
+                            if (this.message.includes('Varredura em andamento') || this.message.includes('operando')) {
+                                this.message = '✅ Varredura Concluída!';
+                                setTimeout(() => { this.message = ''; }, 4000);
+                            }
+                        }
+                        
+                        this.isScraping = data.is_scraping;
+                        this.progressState.total = data.progress.total_categories;
+                        this.progressState.current = data.progress.completed_categories;
+                        this.progressState.title = data.progress.current_action;
+                        
+                        // Atualizar terminal sem piscar (apenas se houver mudanças)
+                        if (data.logs && data.logs.length !== this.terminalLogs.length) {
+                            this.terminalLogs = data.logs;
+                            this.$nextTick(() => {
+                                const container = document.getElementById('terminalContainer');
+                                if (container) container.scrollTop = container.scrollHeight;
+                            });
+                        }
+                        
+                    } catch (e) {
+                        console.error("Erro ao checar status", e);
+                    }
+                },
+                
+                openModal() {
+                    this.showProgressModal = true;
+                    this.terminalLogs = [];
+                    this.progressState = { total: 0, current: 0, title: 'Iniciando sistema central...' };
+                },
+                
+                closeModal() {
+                    if (this.isScraping) return;
+                    this.showProgressModal = false;
+                },
+
+                get filteredLeads() {
+                    let result = this.leads;
+                    
+                    if (this.filter === 'alvos') {
+                        result = this.leads.filter(l => l.site_status !== 'Com Site');
+                    } else if (this.filter !== 'all') {
+                        result = this.leads.filter(l => l.site_status === this.filter);
+                    }
+                    
+                    // Calcula o Score de Fechamento (Algoritmo IA)
+                    result = result.map(lead => {
+                        let score = 0;
+                        
+                        // 1. Status do Site
+                        if (lead.site_status === 'Site Fora do Ar') score += 50;
+                        else if (lead.site_status === 'Apenas Rede Social') score += 40;
+                        else if (lead.site_status === 'Sem Site') score += 30;
+                        
+                        // 2. Poder Aquisitivo do Nicho
+                        const highTicket = ['odontol', 'médic', 'estética', 'arquitet', 'construtora', 'energia', 'imobiliária', 'advoga', 'pilates', 'fisioterapia'];
+                        const midTicket = ['mecânica', 'pet shop', 'contabilidade', 'móveis', 'veterinária', 'psicólogo', 'corretora', 'despachante', 'ótica', 'marcenaria', 'vidraçaria', 'serralheria', 'dedetizadora'];
+                        
+                        const term = (lead.search_term || '').toLowerCase();
+                        if (highTicket.some(t => term.includes(t))) score += 30;
+                        else if (midTicket.some(t => term.includes(t))) score += 20;
+                        else score += 10;
+                        
+                        // 3. Avaliação no Google
+                        if (lead.rating && lead.rating.trim() !== '') score += 10;
+                        
+                        // 4. Telefone
+                        if (lead.phone && lead.phone.trim() !== '') score += 10;
+                        else score -= 50; // Penalidade grave se não tiver telefone
+                        
+                        return { ...lead, score };
+                    });
+                    
+                    // Ordenar por relevância caso o filtro de alvos esteja ligado
+                    if (this.filter === 'alvos') {
+                        result.sort((a, b) => b.score - a.score);
+                    }
+                    
+                    return result;
+                },
+
+                async fetchLeads() {
+                    try {
+                        const res = await fetch('/api/leads');
+                        const data = await res.json();
+                        // Só atualiza se houver mudança pra não piscar a tela
+                        if(JSON.stringify(this.leads) !== JSON.stringify(data)) {
+                            this.leads = data;
+                        }
+                    } catch (e) {
+                        console.error("Erro ao carregar leads", e);
+                    }
+                },
+
+                async startSingleCategory(category) {
+                    if (!this.city) return;
+                    this.isScraping = true;
+                    this.message = `Iniciando robô para varrer "${category}" em ${this.city}... O sistema irá carregar os dados em segundo plano.`;
+                    
+                    const term = `${category} em ${this.city}`;
+                    
+                    try {
+                        const res = await fetch(`/api/scrape?search_term=${encodeURIComponent(term)}&max_results=15`, {
+                            method: 'POST'
+                        });
+                        
+                        if(!res.ok) {
+                            const err = await res.json();
+                            alert(err.detail || "Erro ao iniciar.");
+                            this.isScraping = false;
+                            this.message = '';
+                            return;
+                        }
+                        
+                        this.openModal();
+                        this.message = 'Varredura em andamento... Acompanhe pelo terminal!';
+                        
+                    } catch (e) {
+                        console.error(e);
+                        this.isScraping = false;
+                    }
+                },
+
+                async startAutoPilot() {
+                    if (!this.city) return;
+                    
+                    const confirmacao = confirm("O Piloto Automático vai iniciar o robô para varrer TODOS OS 50 NICHOS recomendados na sua cidade usando THREADS. Como a Varredura Profunda está ativada, isso pode levar um tempo considerável (20 a 40 minutos), mas os leads vão aparecer na tabela em tempo real conforme são encontrados.\n\nDeseja continuar?");
+                    
+                    if(!confirmacao) return;
+                    
+                    this.isScraping = true;
+                    this.message = `🔥 Piloto Automático ATIVADO! O robô invisível começou a vasculhar a cidade de ${this.city} em busca de empresas. Deixe a página aberta e acompanhe a tabela encher!`;
+                    
+                    try {
+                        const res = await fetch(`/api/scrape/autopilot`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                city: this.city,
+                                categories: this.categories
+                            })
+                        });
+                        
+                        if(!res.ok) {
+                            const err = await res.json();
+                            alert(err.detail || "Erro ao iniciar piloto automático.");
+                            this.isScraping = false;
+                            this.message = '';
+                            return;
+                        }
+                        
+                        this.openModal();
+                        this.message = 'Modo Automático operando silenciosamente. Você já pode abordar os primeiros leads que aparecerem!';
+                        
+                    } catch (e) {
+                        console.error(e);
+                        this.isScraping = false;
+                        this.message = 'Erro ao iniciar Piloto Automático.';
+                    }
+                },
+
+                async updateStatus(id, status) {
+                    try {
+                        await fetch(`/api/leads/${id}/status?status=${encodeURIComponent(status)}`, {
+                            method: 'POST'
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+
+                openWhatsApp(lead) {
+                    if (!lead.phone) return;
+                    
+                    let phone = lead.phone.replace(/\D/g, '');
+                    if (!phone.startsWith('55')) phone = '55' + phone;
+
+                    const firstName = lead.name.split(' ')[0];
+                    let text = "";
+
+                    if (lead.site_status !== 'Com Site') {
+                        let motivo = lead.site_status === 'Site Fora do Ar' ? 'vi que o site de vocês que está no Google está fora do ar' : (lead.site_status === 'Apenas Rede Social' ? 'vi que vocês têm apenas rede social no link do Google Maps' : 'vi que vocês estão sem site');
+                        text = `Fala pessoal da ${firstName}, tudo bem? Estava procurando estabelecimentos da região aqui da cidade e achei o negócio de vocês no Google. Eu ${motivo} e resolvi avisar, porque o Google acaba escondendo empresas sem site profissional nas buscas, e vocês podem estar perdendo clientes de graça.\n\nEu sou desenvolvedor aqui na cidade e montei uma ideia de página para vocês receberem orçamentos direto no WhatsApp. Posso mandar o link pra darem uma olhada sem compromisso?`;
+                    } else {
+                        text = `Fala pessoal da ${firstName}, tudo bem? Encontrei vocês no Google Maps e dei uma olhada no site. Sou desenvolvedor aqui da cidade e vi algumas oportunidades de melhorar a página de vocês para carregar mais rápido e captar mais clientes pelo WhatsApp. Posso mandar uma sugestão rápida sem compromisso?`;
+                    }
+
+                    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                },
+
+                async extractData(lead) {
+                    if (this.extractingId) return;
+                    this.extractingId = lead.id;
+                    try {
+                        const res = await fetch('/api/extract-details', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: lead.name, address: lead.address })
+                        });
+                        
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(err.detail || "Erro ao coletar dados.");
+                        }
+                        
+                        // Baixar o arquivo zip
+                        const blob = await res.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        
+                        // Extrair nome original do header se possível
+                        const contentDisposition = res.headers.get('content-disposition');
+                        let filename = `${lead.name.replace(/[^a-zA-Z0-9]/g, '_')}_Dados.zip`;
+                        if (contentDisposition && contentDisposition.includes('filename=')) {
+                            filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+                        }
+                        
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                        
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.extractingId = null;
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
