@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from starlette.background import BackgroundTask
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -14,11 +15,9 @@ from collections import deque
 import datetime
 import sys
 
-if sys.platform == 'win32':
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
+# Política de loop de evento não é mais necessária aqui
 import database
-from scraper import scrape_google_maps, extract_place_details_sync
+from scraper import scrape_google_maps, scrape_google_maps_api, extract_place_details_sync
 
 app = FastAPI(title="LeadGen Pro API")
 
@@ -31,7 +30,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Controle de Varredura Concorrente e Logs
 is_scraping_active = False
 scraping_lock = threading.Lock()
-scraping_logs = deque(maxlen=200) # Mantém apenas os últimos 200 logs na memória
+extraction_lock = threading.Lock() # Impede que duas threads abram o Chrome persistente do Playwright juntas
+scraping_logs = deque(maxlen=2000) # Mantém os últimos 2000 logs na memória
 scraping_progress = {
     "total_categories": 0,
     "completed_categories": 0,
@@ -50,7 +50,40 @@ async def read_root():
 @app.get("/api/leads")
 def get_leads(db: Session = Depends(database.get_db)):
     leads = db.query(database.Lead).order_by(database.Lead.id.desc()).all()
-    return leads
+    
+    result = []
+    for lead in leads:
+        lead_dict = {
+            "id": lead.id, "name": lead.name, "phone": lead.phone, 
+            "address": lead.address, "website": lead.website,
+            "status": lead.status, "site_status": lead.site_status,
+            "search_term": lead.search_term, "rating": lead.rating,
+            "created_at": lead.created_at.isoformat() if lead.created_at else None
+        }
+        
+        # --- Cálculo de Score (Algoritmo IA movido do frontend) ---
+        score = 0
+        if lead.site_status == 'Site Fora do Ar': score += 50
+        elif lead.site_status == 'Apenas Rede Social': score += 40
+        elif lead.site_status == 'Sem Site': score += 30
+        
+        term = (lead.search_term or "").lower()
+        highTicket = ['odontol', 'médic', 'estética', 'arquitet', 'construtora', 'energia', 'imobiliária', 'advoga', 'pilates', 'fisioterapia']
+        midTicket = ['mecânica', 'pet shop', 'contabilidade', 'móveis', 'veterinária', 'psicólogo', 'corretora', 'despachante', 'ótica', 'marcenaria', 'vidraçaria', 'serralheria', 'dedetizadora']
+        
+        if any(t in term for t in highTicket): score += 30
+        elif any(t in term for t in midTicket): score += 20
+        else: score += 10
+        
+        if lead.rating and lead.rating.strip() != "": score += 10
+        
+        if lead.phone and lead.phone.strip() != "": score += 10
+        else: score -= 50
+        
+        lead_dict["score"] = score
+        result.append(lead_dict)
+        
+    return result
 
 @app.get("/api/status")
 def get_status():
@@ -73,13 +106,17 @@ def cleanup_zip(file_path: str):
             print(f"Erro ao limpar arquivos temporários: {e}")
 
 @app.post("/api/extract-details")
-def extract_details(req: ExtractRequest, background_tasks: BackgroundTasks):
+def extract_details(req: ExtractRequest):
+    if not extraction_lock.acquire(blocking=False):
+        raise HTTPException(status_code=400, detail="Aguarde. Já existe uma extração profunda em andamento e ela não pode ser feita em paralelo por segurança do sistema.")
+        
     try:
         zip_path = extract_place_details_sync(req.name, req.address)
         if not zip_path or not os.path.exists(zip_path):
             raise HTTPException(status_code=404, detail="Não foi possível extrair dados ou criar o arquivo.")
             
-        background_tasks.add_task(cleanup_zip, zip_path)
+        # O BackgroundTask atrelado ao FileResponse só executa após a conexão HTTP fechar com segurança
+        task = BackgroundTask(cleanup_zip, zip_path)
         
         # Limpa o nome do arquivo para o header
         safe_name = "".join([c for c in req.name if c.isalpha() or c.isdigit() or c==' ']).rstrip()
@@ -88,10 +125,13 @@ def extract_details(req: ExtractRequest, background_tasks: BackgroundTasks):
         return FileResponse(
             zip_path, 
             filename=filename,
-            media_type="application/zip"
+            media_type="application/zip",
+            background=task
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        extraction_lock.release()
 
 @app.get("/api/progress")
 def get_progress():
@@ -111,7 +151,7 @@ def update_lead_status(lead_id: int, status: str, db: Session = Depends(database
     db.commit()
     return {"message": "Status atualizado"}
 
-def scrape_and_save(search_term: str, max_results: int):
+def scrape_and_save(search_term: str, max_results: int, mode: str = "scraper"):
     """Função core que raspa e salva um termo no BD. Segura para threads."""
     db = database.SessionLocal()
     
@@ -122,19 +162,17 @@ def scrape_and_save(search_term: str, max_results: int):
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(scrape_google_maps(search_term, max_results, log_cb))
+        if mode == "api":
+            results = loop.run_until_complete(scrape_google_maps_api(search_term, max_results, log_cb))
+        else:
+            results = loop.run_until_complete(scrape_google_maps(search_term, max_results, log_cb))
         
         for r in results:
             name = r.get("name")
             phone = r.get("phone")
             
-            # Deduplicação: verifica se já existe loja com mesmo Nome OU mesmo Telefone
-            if phone:
-                existing = db.query(database.Lead).filter(
-                    or_(database.Lead.name == name, database.Lead.phone == phone)
-                ).first()
-            else:
-                existing = db.query(database.Lead).filter(database.Lead.name == name).first()
+            # Deduplicação restrita: verifica APENAS pelo nome exato para não misturar filiais/clínicas
+            existing = db.query(database.Lead).filter(database.Lead.name == name).first()
                 
             if not existing:
                 new_lead = database.Lead(
@@ -156,15 +194,15 @@ def scrape_and_save(search_term: str, max_results: int):
         with scraping_lock:
             scraping_progress["completed_categories"] += 1
 
-def run_scraper_single_bg(search_term: str, max_results: int):
+def run_scraper_single_bg(search_term: str, max_results: int, mode: str = "scraper"):
     global is_scraping_active
     try:
-        scrape_and_save(search_term, max_results)
+        scrape_and_save(search_term, max_results, mode)
     finally:
         with scraping_lock:
             is_scraping_active = False
 
-def run_scraper_multi_bg(city: str, categories: list, max_results_per_cat: int):
+def run_scraper_multi_bg(city: str, categories: list, max_results_per_cat: int, mode: str = "scraper"):
     """Roda a raspagem com threads (max_workers=3) para não sobrecarregar o PC"""
     global is_scraping_active
     try:
@@ -173,7 +211,7 @@ def run_scraper_multi_bg(city: str, categories: list, max_results_per_cat: int):
             for cat in categories:
                 search_term = f"{cat} em {city}"
                 add_global_log(f"⏳ Enfileirando varredura para: {search_term}")
-                futures.append(executor.submit(scrape_and_save, search_term, max_results_per_cat))
+                futures.append(executor.submit(scrape_and_save, search_term, max_results_per_cat, mode))
             # Esperar todas as threads terminarem
             concurrent.futures.wait(futures)
     except Exception as e:
@@ -184,7 +222,7 @@ def run_scraper_multi_bg(city: str, categories: list, max_results_per_cat: int):
             add_global_log("🚀 Varredura Profunda Concluída!")
 
 @app.post("/api/scrape")
-def start_scraping(search_term: str, background_tasks: BackgroundTasks, max_results: int = 999, db: Session = Depends(database.get_db)):
+def start_scraping(search_term: str, background_tasks: BackgroundTasks, max_results: int = 999, mode: str = "scraper", db: Session = Depends(database.get_db)):
     global is_scraping_active
     
     if not search_term:
@@ -198,15 +236,17 @@ def start_scraping(search_term: str, background_tasks: BackgroundTasks, max_resu
         scraping_logs.clear()
         scraping_progress["total_categories"] = 1
         scraping_progress["completed_categories"] = 0
-        scraping_progress["current_action"] = f"Varrendo nicho específico: {search_term}"
+        mode_label = "⚡ Modo Turbo (API)" if mode == "api" else "🤖 Modo Scraper"
+        scraping_progress["current_action"] = f"{mode_label}: {search_term}"
         
-    background_tasks.add_task(run_scraper_single_bg, search_term, max_results)
+    background_tasks.add_task(run_scraper_single_bg, search_term, max_results, mode)
     return {"message": "Varredura iniciada em segundo plano."}
 
 from pydantic import BaseModel
 class AutoPilotRequest(BaseModel):
     city: str
     categories: list[str]
+    mode: str = "scraper"
 
 @app.post("/api/scrape/autopilot")
 def start_autopilot(req: AutoPilotRequest, background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
@@ -223,10 +263,10 @@ def start_autopilot(req: AutoPilotRequest, background_tasks: BackgroundTasks, db
         scraping_logs.clear()
         scraping_progress["total_categories"] = len(req.categories)
         scraping_progress["completed_categories"] = 0
-        scraping_progress["current_action"] = f"Piloto Automático ({len(req.categories)} nichos) em {req.city}"
+        mode_label = "⚡ Modo Turbo (API)" if req.mode == "api" else "🤖 Modo Scraper"
+        scraping_progress["current_action"] = f"Piloto Automático {mode_label} ({len(req.categories)} nichos) em {req.city}"
         
-    # max_results 999 para varrer tudo na varredura profunda
-    background_tasks.add_task(run_scraper_multi_bg, req.city, req.categories, 999)
+    background_tasks.add_task(run_scraper_multi_bg, req.city, req.categories, 999, req.mode)
     return {"message": "Piloto Automático ativado! O robô vai varrer todas as categorias da cidade em segundo plano."}
 
 if __name__ == "__main__":

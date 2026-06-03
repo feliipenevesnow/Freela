@@ -88,6 +88,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Search Modal -->
+    <div x-show="showSearchModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" style="display: none;" x-transition>
+        <div @click.away="showSearchModal = false" class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Nova Busca
+                </h3>
+                <button @click="showSearchModal = false" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto no-scrollbar">
+                <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">1. Buscar nicho personalizado</h2>
+                <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                    <input 
+                        type="text" 
+                        x-model="customCategory" 
+                        placeholder="Ex: Farmácia, Marcenaria, Dentista..." 
+                        class="flex-1 bg-gray-800/50 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-brand-500 transition shadow-inner"
+                        @keyup.enter="startSingleCategory(customCategory); showSearchModal = false"
+                    >
+                    <button 
+                        @click="startSingleCategory(customCategory); showSearchModal = false"
+                        :disabled="isScraping || !city || !customCategory"
+                        class="bg-brand-600 hover:bg-brand-500 border border-brand-500 text-white font-medium py-3 px-6 rounded-xl transition disabled:opacity-50"
+                    >
+                        Buscar Nicho
+                    </button>
+                </div>
+
+                <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">2. Escolher de uma lista</h2>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="cat in categories" :key="cat">
+                        <button 
+                            @click="startSingleCategory(cat); showSearchModal = false"
+                            :disabled="isScraping || !city"
+                            class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-brand-600 hover:text-white hover:border-brand-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            x-text="cat"
+                        ></button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Background Effects -->
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none"></div>
@@ -133,6 +180,28 @@
         <div class="glass rounded-2xl p-6 mb-8 relative overflow-hidden">
             <h2 class="text-lg font-semibold text-white mb-4">1. Defina o Alvo</h2>
             
+            <!-- Mode Toggle -->
+            <div class="flex items-center gap-3 mb-5 p-1 bg-gray-900/60 rounded-xl w-fit border border-gray-700/50">
+                <button 
+                    @click="scrapeMode = 'scraper'"
+                    :class="scrapeMode === 'scraper' ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30' : 'text-gray-400 hover:text-gray-200'"
+                    class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                >
+                    🤖 Modo Scraper
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/80 text-gray-300 font-normal">Playwright</span>
+                </button>
+                <button 
+                    @click="scrapeMode = 'api'"
+                    :class="scrapeMode === 'api' ? 'bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/30' : 'text-gray-400 hover:text-gray-200'"
+                    class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                >
+                    ⚡ Modo Turbo
+                    <span :class="scrapeMode === 'api' ? 'bg-yellow-600/50 text-yellow-900' : 'bg-gray-700/80 text-gray-300'" class="text-[10px] px-1.5 py-0.5 rounded font-normal">Google API</span>
+                </button>
+            </div>
+            <p x-show="scrapeMode === 'scraper'" class="text-xs text-gray-500 mb-4 -mt-3">🤖 Usa navegador invisível para raspar o Maps. Mais lento, sem custo de API.</p>
+            <p x-show="scrapeMode === 'api'" class="text-xs text-yellow-500/80 mb-4 -mt-3">⚡ Usa a Google Places API. Até 30x mais rápido! Consome créditos ($200 grátis/mês).</p>
+            
             <div class="flex flex-col md:flex-row gap-4 mb-6">
                 <!-- City Input -->
                 <div class="flex-1 relative">
@@ -154,48 +223,25 @@
                 <button 
                     @click="startAutoPilot()"
                     :disabled="isScraping || !city"
-                    class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 px-8 rounded-xl transition duration-300 shadow-lg flex items-center justify-center disabled:opacity-50 glow-red shrink-0"
+                    class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 px-6 rounded-xl transition duration-300 shadow-lg flex items-center justify-center disabled:opacity-50 glow-red shrink-0"
                 >
-                    <span x-show="!isScraping">🚀 Piloto Automático (Varrer Tudo)</span>
+                    <span x-show="!isScraping">🚀 Piloto Automático</span>
                     <span x-show="isScraping" class="flex items-center">
                         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Varrendo a Cidade...
+                        Varrendo...
                     </span>
                 </button>
-            </div>
-
-            <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">2. Ou escolha uma categoria específica</h2>
-            
-            <!-- Category Chips -->
-            <div class="flex flex-wrap gap-2 mb-6">
-                <template x-for="cat in categories" :key="cat">
-                    <button 
-                        @click="startSingleCategory(cat)"
-                        :disabled="isScraping || !city"
-                        class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-brand-600 hover:text-white hover:border-brand-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        x-text="cat"
-                    ></button>
-                </template>
-            </div>
-
-            <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">3. Ou digite um nicho livre</h2>
-            <div class="flex gap-4">
-                <input 
-                    type="text" 
-                    x-model="customCategory" 
-                    placeholder="Ex: Farmácia, Marcenaria, Dentista..." 
-                    class="flex-1 bg-gray-800/50 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-brand-500 transition shadow-inner"
-                    @keyup.enter="startSingleCategory(customCategory)"
-                >
+                
+                <!-- Open Search Modal Button -->
                 <button 
-                    @click="startSingleCategory(customCategory)"
-                    :disabled="isScraping || !city || !customCategory"
-                    class="bg-gray-700 hover:bg-brand-600 border border-gray-600 text-white font-medium py-3 px-6 rounded-xl transition disabled:opacity-50"
+                    @click="showSearchModal = true"
+                    class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 shadow-lg flex items-center justify-center shrink-0"
                 >
-                    Buscar Nicho Personalizado
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Busca Específica
                 </button>
             </div>
         </div>
@@ -203,11 +249,20 @@
         <!-- Status Message -->
         <div x-show="message" class="mb-6 p-4 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-center font-medium" x-text="message" x-transition></div>
 
-        <!-- Filters -->
-        <div class="flex space-x-2 mb-6 overflow-x-auto no-scrollbar pb-2">
-            <button @click="filter = 'all'" :class="filter === 'all' ? 'bg-brand-600 text-white' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap">Todos os Leads</button>
-            <button @click="filter = 'alvos'" :class="filter === 'alvos' ? 'bg-red-600/80 text-white border-red-500' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap border border-transparent">Alvos Ideais (Sem Site Funcionando)</button>
-            <button @click="filter = 'Com Site'" :class="filter === 'Com Site' ? 'bg-brand-600 text-white' : 'bg-gray-800 text-gray-400'" class="px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap">Com Website</button>
+        <!-- Filters & Title -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <svg class="w-6 h-6 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                Base de Leads
+            </h2>
+            <div class="flex items-center gap-3 bg-gray-900/60 p-2 rounded-xl border border-gray-700/50">
+                <label class="text-sm text-gray-400 font-medium pl-2">Filtrar por Status:</label>
+                <select x-model="filter" class="bg-gray-800 border-none text-white text-sm font-medium rounded-lg focus:ring-2 focus:ring-brand-500 block p-2 outline-none cursor-pointer shadow-inner">
+                    <option value="all">🚀 Todos os Leads</option>
+                    <option value="alvos">🎯 Alvos Ideais (Sem Site/Fora do Ar)</option>
+                    <option value="Com Site">✅ Com Website</option>
+                </select>
+            </div>
         </div>
 
         <!-- Leads Table -->
@@ -228,7 +283,13 @@
                             <tr class="hover:bg-white/5 transition duration-150 group">
                                 <td class="p-5">
                                     <div class="flex items-center gap-2">
-                                        <div class="font-semibold text-white text-base group-hover:text-brand-400 transition" x-text="lead.name"></div>
+                                        <a 
+                                            :href="`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name + ' ' + lead.address)}`"
+                                            target="_blank"
+                                            class="font-semibold text-white text-base group-hover:text-brand-400 transition hover:underline flex items-center gap-1.5 cursor-pointer"
+                                            :title="`Abrir ${lead.name} no Google Maps`"
+                                            x-text="lead.name"
+                                        ></a>
                                         <span x-show="lead.score >= 80" class="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold whitespace-nowrap" title="Altíssima chance de fechamento">🔥 Quente</span>
                                         <span x-show="lead.score >= 50 && lead.score < 80" class="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold whitespace-nowrap">⚡ Morno</span>
                                         <span x-show="lead.score < 50" class="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap">❄️ Frio</span>
@@ -320,8 +381,10 @@
                 city: 'Presidente Prudente',
                 customCategory: '',
                 isScraping: false,
+                showSearchModal: false,
                 message: '',
                 filter: 'all',
+                scrapeMode: 'scraper',
                 
                 showProgressModal: false,
                 terminalLogs: [],
@@ -347,6 +410,13 @@
                 init() {
                     this.fetchLeads();
                     this.fetchStatus();
+                    
+                    // Rola pro topo toda vez que o filtro mudar
+                    this.$watch('filter', () => {
+                        window.scrollTo({ top: 0, behavior: 'instant' });
+                    });
+                    // Rola pro topo ao inicializar a página
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 100);
                     // Atualização lenta de background
                     setInterval(async () => {
                         if (!this.showProgressModal) {
@@ -382,8 +452,10 @@
                         this.progressState.current = data.progress.completed_categories;
                         this.progressState.title = data.progress.current_action;
                         
-                        // Atualizar terminal sem piscar (apenas se houver mudanças)
-                        if (data.logs && data.logs.length !== this.terminalLogs.length) {
+                        // Atualizar terminal sem piscar (compara último log, não só o tamanho)
+                        const lastIncoming = data.logs && data.logs.length > 0 ? data.logs[data.logs.length - 1] : null;
+                        const lastCurrent = this.terminalLogs.length > 0 ? this.terminalLogs[this.terminalLogs.length - 1] : null;
+                        if (data.logs && (data.logs.length !== this.terminalLogs.length || lastIncoming !== lastCurrent)) {
                             this.terminalLogs = data.logs;
                             this.$nextTick(() => {
                                 const container = document.getElementById('terminalContainer');
@@ -416,34 +488,8 @@
                         result = this.leads.filter(l => l.site_status === this.filter);
                     }
                     
-                    // Calcula o Score de Fechamento (Algoritmo IA)
-                    result = result.map(lead => {
-                        let score = 0;
-                        
-                        // 1. Status do Site
-                        if (lead.site_status === 'Site Fora do Ar') score += 50;
-                        else if (lead.site_status === 'Apenas Rede Social') score += 40;
-                        else if (lead.site_status === 'Sem Site') score += 30;
-                        
-                        // 2. Poder Aquisitivo do Nicho
-                        const highTicket = ['odontol', 'médic', 'estética', 'arquitet', 'construtora', 'energia', 'imobiliária', 'advoga', 'pilates', 'fisioterapia'];
-                        const midTicket = ['mecânica', 'pet shop', 'contabilidade', 'móveis', 'veterinária', 'psicólogo', 'corretora', 'despachante', 'ótica', 'marcenaria', 'vidraçaria', 'serralheria', 'dedetizadora'];
-                        
-                        const term = (lead.search_term || '').toLowerCase();
-                        if (highTicket.some(t => term.includes(t))) score += 30;
-                        else if (midTicket.some(t => term.includes(t))) score += 20;
-                        else score += 10;
-                        
-                        // 3. Avaliação no Google
-                        if (lead.rating && lead.rating.trim() !== '') score += 10;
-                        
-                        // 4. Telefone
-                        if (lead.phone && lead.phone.trim() !== '') score += 10;
-                        else score -= 50; // Penalidade grave se não tiver telefone
-                        
-                        return { ...lead, score };
-                    });
-                    
+                    // A ordenação agora utiliza o score pre-calculado no Backend
+
                     // Ordenar por relevância caso o filtro de alvos esteja ligado
                     if (this.filter === 'alvos') {
                         result.sort((a, b) => b.score - a.score);
@@ -473,7 +519,7 @@
                     const term = `${category} em ${this.city}`;
                     
                     try {
-                        const res = await fetch(`/api/scrape?search_term=${encodeURIComponent(term)}&max_results=15`, {
+                        const res = await fetch(`/api/scrape?search_term=${encodeURIComponent(term)}&max_results=15&mode=${this.scrapeMode}`, {
                             method: 'POST'
                         });
                         
@@ -497,12 +543,20 @@
                 async startAutoPilot() {
                     if (!this.city) return;
                     
-                    const confirmacao = confirm("O Piloto Automático vai iniciar o robô para varrer TODOS OS 50 NICHOS recomendados na sua cidade usando THREADS. Como a Varredura Profunda está ativada, isso pode levar um tempo considerável (20 a 40 minutos), mas os leads vão aparecer na tabela em tempo real conforme são encontrados.\n\nDeseja continuar?");
+                    const modeMsg = this.scrapeMode === 'api' 
+                        ? '⚡ Piloto Automático TURBO (API) ATIVADO! Varredura ultra-rápida iniciada!'
+                        : `🔥 Piloto Automático ATIVADO! O robô invisível começou a vasculhar a cidade de ${this.city} em busca de empresas. Deixe a página aberta e acompanhe a tabela encher!`;
+                    
+                    const confirmMsg = this.scrapeMode === 'api'
+                        ? `O Piloto Automático vai varrer TODOS OS 50 NICHOS via Google Places API.\n\n⚡ Modo Turbo: muito rápido (~2 minutos), usa créditos da API ($200 grátis/mês).\n\nDeseja continuar?`
+                        : `O Piloto Automático vai varrer TODOS OS 50 NICHOS usando o navegador invisível.\n\n🤖 Modo Scraper: completo (~15-20 minutos), sem custo de API.\n\nDeseja continuar?`;
+                        
+                    const confirmacao = confirm(confirmMsg);
                     
                     if(!confirmacao) return;
                     
                     this.isScraping = true;
-                    this.message = `🔥 Piloto Automático ATIVADO! O robô invisível começou a vasculhar a cidade de ${this.city} em busca de empresas. Deixe a página aberta e acompanhe a tabela encher!`;
+                    this.message = modeMsg;
                     
                     try {
                         const res = await fetch(`/api/scrape/autopilot`, {
@@ -512,7 +566,8 @@
                             },
                             body: JSON.stringify({
                                 city: this.city,
-                                categories: this.categories
+                                categories: this.categories,
+                                mode: this.scrapeMode
                             })
                         });
                         

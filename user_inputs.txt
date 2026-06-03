@@ -1,0 +1,212 @@
+<USER_REQUEST>
+Olá, analise todo o codigo e entenda como funciona depois me de um resumo de um paragrafo de como funciona!
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:06:31-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Fre
+------------------------
+<USER_REQUEST>
+Ótimo, ja melhorou muito, ele ta pegando bastante informações do maps, mas eu quero que abra o navegador do maps e deixe ele aberta por 1 hr vou pegar certinho todos os lugares clicaveis que tem informações e te passar
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2
+------------------------
+<USER_REQUEST>
+Quero que abra pesquisando esse lugar da imagem
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:10:28-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\open_maps.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Othe
+------------------------
+<USER_REQUEST>
+Vamos supor que meu banco ta zerado, e vou fazer a capitura dos locais... tem alguma maneira de acelerar isso ser mais rapido? voce é o detentor de toda tecnologia, sem estregar meu programa tem como fazer essa busca ser muito mais rapida?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The cur
+------------------------
+<USER_REQUEST>
+Não existe duas partes, a que eu acho os lugares para montar meu banco e a parte que eu clico para baixar e ele vai no google maps buscas imagens e informações, analise o codigo, eu estou falando de acelerar a primeira parte! Alem disto sera que aumentar as threads nao deixara meu pc 
+------------------------
+Comments on artifact URI: file:///c%3A/Users/Felipe/.gemini/antigravity-ide/brain/45225c84-f765-4f87-a0c0-79d8c98cbc7d/implementation_plan.md
+
+The user has approved this document.
+
+
+<USER_REQUEST>
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:21:27-03:00.
+
+The user'
+------------------------
+<USER_REQUEST>
+Mesmo com todo esse poder ainda levara 40 minutos?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:26:44-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Ot
+------------------------
+<USER_REQUEST>
+Mesmo com todo esse poder ainda levara 40 minutos?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:29:37-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Ot
+------------------------
+<USER_REQUEST>
+Mas tem creditos mensais? eai?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:30:46-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Other open documents:
+
+------------------------
+<USER_REQUEST>
+Acredito que essa seja minha chave api:
+
+AIzaSyCO4nYm1uD7c3ykZvv0Jkc0BCMR9ZRpRXI
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:37:52-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database.py (LANGUAGE_P
+------------------------
+<USER_REQUEST>
+Não sei se voce ja realizou mudanças, eu iria falar para voce deixar os dois modos, o modo que ja existe de raspar o maps para informações e o modo da API ai no site voce  escolhe de varrer raspando ou varrer pela api
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 20
+------------------------
+<USER_REQUEST>
+prefiro que coloque os dois em um .env
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T10:40:35-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Other open doc
+------------------------
+<USER_REQUEST>
+Ele n aparece todas informações do que esta acontecendo no terminal!
+
+fica travado o terminal! e alem disto a barra de carregamento nao passa do 49, mas o temrinal parou de subir as informações bem no começo!
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T
+------------------------
+<USER_REQUEST>
+Olha como o terminal do frontend travou! o meu terminal da IDE aparece tudo porém o do site nao
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T11:02:57-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\database
+------------------------
+<USER_REQUEST>
+No site travou ai no 49 de novo, no terminal travou aqui:
+
+"Site [Site Fora do Ar]: Flex Color
+Site [Site Fora do Ar]: Ideia Embalagens e Acessrios
+🎉 [API Turbo] Concluído! 60 leads captados.
+Site [Com Site]: Fabrigs Convenincia - Gs e gua
+Site [Com Site]: Roos Chopp Delivery - Pres. 
+------------------------
+<USER_REQUEST>
+Em alvos ideias eu preciso clicar em cima do nome do lugar na listagem e ele abrir o maps para mim
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T11:29:08-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\main.
+------------------------
+<USER_REQUEST>
+Mais uma mudança, toda vez que eu trocar de pagina eu preciso que nao apareça no meio da rolagem, a pagina sempre deve aparecer do top do inicio, quando troco de pagina ou clico em algo que mostra de novo a listagem ele aparece la em baixo, quero fixado em cima toda vez que mudar!
+</U
+------------------------
+<USER_REQUEST>
+Otimo, peguei esse lugar:
+
+"[DEBUG] [Maps] Iniciando navegação: https://www.google.com/maps/search/SolRen+Energia+Solar+R.+Machado+de+Assis,+222+-+Jardim+Castilho,+Pirapozinho+-+SP,+19200-360,+Brasil
+[DEBUG] [Maps] Coletando HTML da Visão Geral...
+[DEBUG] [Maps] Coletando HTML das Ava
+------------------------
+<USER_REQUEST>
+Em avanliações existem várias:
+
+"<div class="m6QErb WNBkOb XiKgde " aria-label="SolRen Energia Solar" role="main" jslog="24393;mutable:true;metadata:WyIwYWhVS0V3anN3UG5jcU91VUF4WHhnR0VHSGR6dk1xOFE4QmNJQWlnQSJd" style=""><div jscontroller="JgYas" class="lkgoR"><div class="aGmWPc " jsco
+------------------------
+<USER_REQUEST>
+Ele fez correto?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T12:00:24-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\main.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Other open documents:
+- c:\Users\Felipe\
+------------------------
+<USER_REQUEST>
+Em avanliações existem várias:
+
+"<div class="m6QErb WNBkOb XiKgde " aria-label="SolRen Energia Solar" role="main" jslog="24393;mutable:true;metadata:WyIwYWhVS0V3anN3UG5jcU91VUF4WHhnR0VHSGR6dk1xOFE4QmNJQWlnQSJd" style=""><div jscontroller="JgYas" class="lkgoR"><div class="aGmWPc " jsco
+------------------------
+<USER_REQUEST>
+Na ultima passada eu havia pegado 4 fotos:
+
+"[DEBUG] [Maps] Iniciando navegação: https://www.google.com/maps/search/SolRen+Energia+Solar+R.+Machado+de+Assis,+222+-+Jardim+Castilho,+Pirapozinho+-+SP,+19200-360,+Brasil
+[DEBUG] [Maps] Coletando HTML da Visão Geral...
+[DEBUG] [Maps] Colet
+------------------------
+<USER_REQUEST>
+Sim quero funcionando preciso de tudo, preciso que role inclusive as avaliações, todas abas que clicar para saber que raspou tudo possível!
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T13:43:07-03:00.
+
+The user's current state is as follows:
+Active Docum
+------------------------
+<USER_REQUEST>
+Ta dificil...
+
+"INFO:     Application startup complete.   
+[DEBUG] [Maps] Iniciando navegação: https://www.google.com/maps/search/SolRen+Energia+Solar+R.+Machado+de+Assis,+222+-+Jardim+Castilho,+Pirapozinho+-+SP,+19200-360,+Brasil
+[DEBUG] [Maps] Coletando HTML da Visão Geral...
+[DEBUG
+------------------------
+<USER_REQUEST>
+O que eu havia pedido em relação aos usuários das avaliações?
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-03T13:59:30-03:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Felipe\Desktop\Freela\main.py (LANGUAGE_PYTHON)
+Cursor is on lin
+------------------------

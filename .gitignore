@@ -1,0 +1,7 @@
+# Ignorar arquivos sensíveis e desnecessários
+.env
+venv/
+__pycache__/
+*.pyc
+*.db
+chrome_session/
